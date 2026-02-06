@@ -1,0 +1,87 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+  }
+
+  environment {
+    DOCKER_REPO = 'abger2025/bootcamp-node-project'
+    GIT_BRANCH = 'main'
+  }
+
+  stages {
+    stage('Install Dependencies') {
+      steps {
+        dir('app') {
+          sh 'npm ci'
+        }
+      }
+    }
+
+    stage('Run Tests') {
+      steps {
+        dir('app') {
+          sh 'npm test'
+        }
+      }
+    }
+
+    stage('Increment Version') {
+      steps {
+        dir('app') {
+          sh 'npm version minor --no-git-tag-version'
+          script {
+            env.APP_VERSION = sh(
+              returnStdout: true,
+              script: "node -p \"require('./package.json').version\""
+            ).trim()
+          }
+        }
+      }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        dir('app') {
+          sh "docker build -t ${DOCKER_REPO}:${APP_VERSION} ."
+        }
+      }
+    }
+
+    stage('Push Docker Image') {
+      steps {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'dockerhub-creds',
+            usernameVariable: 'DOCKER_USER',
+            passwordVariable: 'DOCKER_PASS'
+          )
+        ]) {
+          sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+          sh "docker push ${DOCKER_REPO}:${APP_VERSION}"
+          sh 'docker logout'
+        }
+      }
+    }
+
+    stage('Commit & Push Version') {
+      steps {
+        dir('app') {
+          sh 'git add package.json package-lock.json'
+          sh "git -c user.name='jenkins' -c user.email='jenkins@local' commit -m \"chore: bump version to ${APP_VERSION}\""
+        }
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'git-https-creds',
+            usernameVariable: 'GIT_USER',
+            passwordVariable: 'GIT_PASS'
+          )
+        ]) {
+          sh 'git remote set-url origin https://$GIT_USER:$GIT_PASS@github.com/ABGer2025/TechWorldExercise8.git'
+          sh "git push origin ${GIT_BRANCH}"
+        }
+      }
+    }
+  }
+}
