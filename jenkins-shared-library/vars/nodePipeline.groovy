@@ -25,10 +25,10 @@ def call(Map config = [:]) {
         }
 
         environment {
-            APP_DIR = cfg.appDir
-            DOCKER_REPO = cfg.dockerRepo
-            GIT_BRANCH = cfg.gitBranch
-            GIT_REMOTE_HOST = gitRemoteHost
+            APP_DIR = "${cfg.appDir}"
+            DOCKER_REPO = "${cfg.dockerRepo}"
+            GIT_BRANCH = "${cfg.gitBranch}"
+            GIT_REMOTE_HOST = "${gitRemoteHost}"
         }
 
         stages {
