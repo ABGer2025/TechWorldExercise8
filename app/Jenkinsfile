@@ -68,6 +68,7 @@ pipeline {
     stage('Commit & Push Version') {
       steps {
         dir('app') {
+          sh 'git checkout -B main'
           sh 'git add package.json package-lock.json'
           sh "git -c user.name='jenkins' -c user.email='jenkins@local' commit -m \"chore: bump version to ${APP_VERSION}\""
         }
